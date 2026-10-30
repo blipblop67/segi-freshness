@@ -196,3 +196,7 @@ CI runs lint and tests, and compiles the CUDA kernels for SM 8.7 in an `nvidia/c
 - In `zones` mode, a bin that empties shows more floor. Use `detection` mode for restock alerts.
 - Strong colour-cast lighting (e.g. red "meat" lamps) shifts hues. Calibrate per bin, and prefer neutral 4000–5000 K lighting over the produce.
 - Next: per-SKU shelf-life models, POS markdown integration (auto-discount grade C), multi-camera on one Orin Nano with DeepStream.
+
+## License
+
+[MIT](LICENSE). The sample clip in `samples/` is synthetic and covered by the same license.

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Released under the MIT license
+
 - Target platform pinned to the Jetson Orin Nano 8GB on JetPack 6.2 (L4T r36.4.3)
 - `setup_jetson.sh` checks the L4T version and board, and selects MAXN SUPER from `/etc/nvpmodel.conf`
 - `segi-freshness check` reports the board model and L4T version

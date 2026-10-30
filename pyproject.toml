@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "Edge AI freshness monitoring for wet-market produce on NVIDIA Jetson Orin Nano"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "Proprietary" }
+license = { text = "MIT" }
 # numpy<2: JetPack 6 system OpenCV and TensorRT bindings are built against numpy 1.x.
 # OpenCV and TensorRT come from JetPack on the device (GStreamer-enabled build); do not
 # pip-install opencv-python on the Jetson, it would shadow the system build.
