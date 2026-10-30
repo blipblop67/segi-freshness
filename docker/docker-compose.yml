@@ -1,0 +1,24 @@
+# docker compose -f docker/docker-compose.yml up -d
+services:
+  segi-freshness:
+    image: segi-freshness:1.0.0
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    runtime: nvidia
+    network_mode: host          # RTSP cameras + MQTT on the store LAN
+    restart: unless-stopped
+    env_file: ../deploy/env.example   # replace with a real secrets file on site
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all
+    volumes:
+      - ../configs:/app/configs:ro
+      - ../models:/app/models:ro
+      - ../data:/app/data
+      - /tmp/argus_socket:/tmp/argus_socket   # CSI cameras via nvargus-daemon
+    devices:
+      - /dev/video0:/dev/video0                # USB camera (remove if unused)
+    logging:
+      driver: json-file
+      options: {max-size: "20m", max-file: "5"}

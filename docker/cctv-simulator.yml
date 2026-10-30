@@ -1,0 +1,16 @@
+# CCTV simulator: serves samples/wetmarket_cctv_demo.mp4 as a looping RTSP camera,
+# like a store IP camera or NVR channel. Runs on a laptop or on the Jetson itself.
+#
+#   docker compose -f docker/cctv-simulator.yml up -d
+#   segi-freshness run -c configs/demo-rtsp.yaml
+#
+# Stream: rtsp://<host>:8554/wetmarket-cam01  (H.264, 1080p, 15 fps; open it in VLC to check)
+services:
+  cctv-sim:
+    image: bluenviron/mediamtx:1.9.3-ffmpeg
+    restart: unless-stopped
+    ports:
+      - "8554:8554"
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml:ro
+      - ../samples:/samples:ro

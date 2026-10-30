@@ -1,0 +1,44 @@
+# Demo without a camera: replays the CCTV-style sample clip in a loop.
+#   segi-freshness run -c configs/demo.yaml   ->  http://localhost:8080
+# Everything not listed here comes from store.yaml.
+extends: store.yaml
+
+store_id: segi-demo
+store_name: Segi Cash & Carry (Demo)
+
+runtime:
+  auto_calibrate_after_s: 3   # demo only: the clip starts with freshly stocked bins
+  log_json: false
+
+camera:
+  source: file
+  uri: samples/wetmarket_cctv_demo.mp4
+  loop_file: true
+  fps: 15
+
+storage:
+  path: data/demo.db
+
+# The CCTV view is angled, so bins are trapezoids
+# (from `python scripts/make_demo_video.py --print-zones`).
+zones:
+  - id: bin-tomato
+    name: Tomato
+    produce: tomato
+    polygon: [[0.165, 0.167], [0.486, 0.167], [0.484, 0.456], [0.12, 0.456]]
+    grid: [3, 2]
+  - id: bin-banana
+    name: Pisang (Banana)
+    produce: banana
+    polygon: [[0.514, 0.167], [0.835, 0.167], [0.88, 0.456], [0.516, 0.456]]
+    grid: [3, 2]
+  - id: bin-sawi
+    name: Sawi
+    produce: sawi
+    polygon: [[0.112, 0.505], [0.484, 0.505], [0.481, 0.901], [0.05, 0.901]]
+    grid: [3, 2]
+  - id: bin-carrot
+    name: Lobak Merah (Carrot)
+    produce: carrot
+    polygon: [[0.516, 0.505], [0.888, 0.505], [0.95, 0.901], [0.519, 0.901]]
+    grid: [3, 2]

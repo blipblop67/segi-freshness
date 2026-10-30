@@ -1,0 +1,10 @@
+# Normalise line endings; shell scripts and units must stay LF so they run on the Jetson
+# even when the repo is cloned on Windows.
+* text=auto eol=lf
+*.sh text eol=lf
+*.service text eol=lf
+*.mp4 binary
+*.jpg binary
+*.png binary
+*.engine binary
+*.onnx binary

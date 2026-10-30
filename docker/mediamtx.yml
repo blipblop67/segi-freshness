@@ -1,0 +1,11 @@
+# mediamtx config for the CCTV simulator (docker/cctv-simulator.yml).
+# Add more paths to simulate more cameras.
+paths:
+  wetmarket-cam01:
+    # -re: real time; -stream_loop -1: loop forever; -c copy: keep the camera-like
+    # H.264 bitstream untouched (no re-encode, negligible CPU).
+    runOnInit: >-
+      ffmpeg -hide_banner -loglevel warning -re -stream_loop -1
+      -i /samples/wetmarket_cctv_demo.mp4 -c copy -f rtsp
+      rtsp://localhost:$RTSP_PORT/$MTX_PATH
+    runOnInitRestart: yes

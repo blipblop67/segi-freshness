@@ -1,0 +1,23 @@
+# Ultralytics dataset definition for the produce detector.
+# Class order MUST match models.detector_labels in configs/store.yaml.
+path: ../datasets/det
+train: images/train
+val: images/val
+names:
+  0: tomato
+  1: banana
+  2: sawi
+  3: carrot
+  4: chili
+  5: cucumber
+  6: eggplant
+  7: cabbage
+  8: kangkung
+  9: long_bean
+  10: lady_finger
+  11: potato
+  12: onion
+  13: apple
+  14: orange
+  15: mango
+  16: papaya

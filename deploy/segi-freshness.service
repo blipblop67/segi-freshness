@@ -1,0 +1,28 @@
+[Unit]
+Description=Segi Fresh Monitor (produce freshness AI)
+After=network-online.target nvargus-daemon.service
+Wants=network-online.target
+
+[Service]
+Type=notify
+NotifyAccess=main
+User=segi
+Group=segi
+SupplementaryGroups=video
+WorkingDirectory=/opt/segi-freshness
+EnvironmentFile=-/etc/segi-freshness/env
+ExecStart=/opt/segi-freshness/.venv/bin/segi-freshness run -c /opt/segi-freshness/configs/store.yaml
+Restart=always
+RestartSec=5
+# The pipeline pings the watchdog every few seconds; a hung CUDA/camera call gets restarted.
+WatchdogSec=60
+TimeoutStartSec=180
+TimeoutStopSec=20
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/segi-freshness/data
+PrivateTmp=false
+
+[Install]
+WantedBy=multi-user.target

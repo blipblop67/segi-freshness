@@ -1,0 +1,117 @@
+# Segi Fresh Monitor - production template for one CCTV camera over a wet-market area.
+# Copy per store/camera, then set store_id, camera and zones (see docs/CCTV.md).
+# Secrets come from the environment: SEGI_API_KEY, SEGI_MQTT_USERNAME,
+# SEGI_MQTT_PASSWORD, SEGI_WEBHOOK_URL, SEGI_CAMERA_URI (RTSP URL with password).
+# For a demo without a camera use configs/demo.yaml.
+
+store_id: segi-store01
+store_name: Segi Cash & Carry
+camera_id: wetmarket-cam01
+
+runtime:
+  mode: zones            # zones | detection
+  backend: auto          # auto | cuda | cpu
+  inference_fps: 2       # produce does not move; 2 Hz keeps the Orin Nano cool
+  snapshot_interval_s: 2
+  log_level: INFO
+  log_json: true
+
+camera:
+  # Store CCTV / NVR over RTSP. The real URL (with password) belongs in
+  # SEGI_CAMERA_URI in /etc/segi-freshness/env; this placeholder is overridden.
+  #   Hikvision: rtsp://USER:PASS@IP:554/Streaming/Channels/101   (101 main, 102 sub)
+  #   Dahua:     rtsp://USER:PASS@IP:554/cam/realmonitor?channel=1&subtype=0
+  #   NVR:       use the NVR's IP and the channel number of the wet-market camera
+  # Other sources: csi (camera on the Jetson CAM0), usb (/dev/video0), file (recordings).
+  source: rtsp
+  uri: rtsp://viewer:CHANGE_ME@192.168.1.64:554/Streaming/Channels/101
+  rtsp_codec: h264        # h264 | h265 - must match the camera's encoding setting
+  rtsp_transport: tcp
+  rtsp_latency_ms: 200
+  decoder: auto           # Jetson NVDEC on device, software decode elsewhere
+  width: 1920
+  height: 1080
+  fps: 15
+
+models:
+  # Optional freshness classifier (fresh / ripe / overripe / spoiled).
+  # Without it, scoring uses the CUDA colour-defect analysis only.
+  classifier_engine: models/freshness_cls_fp16.engine
+  classifier_labels: [fresh, ripe, overripe, spoiled]
+  classifier_input: 224
+  classifier_max_batch: 32
+
+  # Required only for runtime.mode: detection.
+  detector_engine: models/produce_det_fp16.engine
+  detector_input: 640
+  detector_labels: [tomato, banana, sawi, carrot, chili, cucumber, eggplant, cabbage,
+                    kangkung, long_bean, lady_finger, potato, onion, apple, orange, mango, papaya]
+  conf_threshold: 0.35
+  iou_threshold: 0.5
+  max_detections: 150
+
+scoring:
+  classifier_weight: 0.65
+  class_scores: {fresh: 100, ripe: 80, overripe: 45, spoiled: 5}
+  ema_alpha: 0.2
+  spoiled_item_score: 30
+  roi_shrink: 0.08
+  color_grid: 48
+  grades: {a: 80, b: 60, c: 40}
+  profiles:
+    default:    {dark: 1.5, brown: 2.0, mold: 1.0, yellow: 0.0}
+    leafy:      {dark: 1.5, brown: 2.0, mold: 0.8, yellow: 1.5}   # yellowing = staleness
+    banana:     {dark: 1.5, brown: 1.0, mold: 1.0, yellow: 0.0}   # sugar spots are normal
+    orange_veg: {dark: 1.5, brown: 0.8, mold: 1.0, yellow: 0.0}
+    pale_veg:   {dark: 1.5, brown: 2.0, mold: 0.15, yellow: 0.3}  # cabbage, onion, potato
+  produce_profile_map:
+    sawi: leafy
+    kangkung: leafy
+    bayam: leafy
+    banana: banana
+    carrot: orange_veg
+    orange: orange_veg
+    papaya: orange_veg
+    mango: orange_veg
+    cabbage: pale_veg
+    onion: pale_veg
+    potato: pale_veg
+
+zones:
+  - {id: bin-tomato, name: "Tomato", produce: tomato, rect: [0.03, 0.06, 0.48, 0.47], grid: [3, 2]}
+  - {id: bin-banana, name: "Pisang (Banana)", produce: banana, rect: [0.52, 0.06, 0.97, 0.47], grid: [3, 2]}
+  - {id: bin-sawi, name: "Sawi", produce: sawi, rect: [0.03, 0.53, 0.48, 0.94], grid: [3, 2]}
+  - {id: bin-carrot, name: "Lobak Merah (Carrot)", produce: carrot, rect: [0.52, 0.53, 0.97, 0.94], grid: [3, 2]}
+
+alerts:
+  low_threshold: 55
+  critical_threshold: 35
+  hysteresis: 5
+  trigger_samples: 6       # 3 s at 2 Hz before raising
+  clear_samples: 6
+  cooldown_s: 600
+  spoiled_trigger_samples: 6
+  restock_trigger_samples: 40
+  camera_offline_s: 30
+
+mqtt:
+  enabled: false
+  host: mqtt.segi.local
+  port: 8883
+  tls: true
+  topic_prefix: segi
+  publish_interval_s: 10
+
+webhook:
+  enabled: false
+  url: ""
+
+api:
+  enabled: true
+  host: 0.0.0.0
+  port: 8080
+
+storage:
+  path: data/freshness.db
+  persist_interval_s: 30
+  retention_days: 30

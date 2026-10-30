@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Segi Fresh Monitor</title>
+<style>
+  :root {
+    --bg: #f4f6f3; --panel: #ffffff; --ink: #1d2a1f; --muted: #66756a; --line: #dfe5df;
+    --a: #2e9e4f; --b: #c9b51d; --c: #e98a15; --d: #d63b2f; --accent: #1f6f3a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111613; --panel: #1a211c; --ink: #e6eee7; --muted: #92a196; --line: #2a342d; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 20px; background: var(--accent); color: #fff; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 650; }
+  header .meta { font-size: 12px; opacity: .9; display: flex; gap: 14px; flex-wrap: wrap; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; background: #bbb; }
+  .dot.ok { background: #7CFC9A; } .dot.bad { background: #ff7a6e; }
+  main { max-width: 1400px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: minmax(0, 3fr) minmax(280px, 2fr); }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
+  h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  #snap { width: 100%; border-radius: 6px; background: #000; aspect-ratio: 16/9; object-fit: contain; display: block; }
+  .zones { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .zone { border: 1px solid var(--line); border-left: 6px solid var(--muted); border-radius: 8px; padding: 10px 12px; }
+  .zone.A { border-left-color: var(--a); } .zone.B { border-left-color: var(--b); } .zone.C { border-left-color: var(--c); } .zone.D { border-left-color: var(--d); }
+  .zone .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .zone .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .zone .score { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .grade { font-weight: 700; padding: 1px 7px; border-radius: 4px; color: #fff; background: var(--muted); }
+  .grade.A { background: var(--a); } .grade.B { background: var(--b); color: #222; } .grade.C { background: var(--c); } .grade.D { background: var(--d); }
+  .zone .sub { color: var(--muted); font-size: 12px; }
+  svg.spark { width: 100%; height: 34px; display: block; margin-top: 6px; }
+  .alerts { display: flex; flex-direction: column; gap: 8px; }
+  .alert { border-radius: 8px; padding: 9px 11px; border: 1px solid var(--line); display: flex; gap: 10px; justify-content: space-between; align-items: center; }
+  .alert.critical { border-color: var(--d); background: color-mix(in srgb, var(--d) 10%, transparent); }
+  .alert.warning { border-color: var(--c); background: color-mix(in srgb, var(--c) 10%, transparent); }
+  .alert .t { font-size: 12px; color: var(--muted); }
+  button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  .empty { color: var(--muted); padding: 8px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+  td { padding: 3px 0; border-bottom: 1px solid var(--line); } td:last-child { text-align: right; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Segi Fresh Monitor</h1>
+  <div class="meta">
+    <span><span class="dot" id="camDot"></span><span id="cam">camera</span></span>
+    <span id="backend"></span>
+    <span id="temp"></span>
+    <span id="updated"></span>
+    <button id="calib" title="Use right after restocking with fresh produce" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.5)">Calibrate bins</button>
+  </div>
+</header>
+<main>
+  <div style="display:grid; gap:16px; min-width:0">
+    <section>
+      <h2>Live view</h2>
+      <img id="snap" alt="Annotated live view of produce display bins">
+    </section>
+    <section>
+      <h2>Display bins</h2>
+      <div class="zones" id="zones"><div class="empty">Waiting for first analysis...</div></div>
+    </section>
+  </div>
+  <div style="display:grid; gap:16px; align-content:start; min-width:0">
+    <section>
+      <h2>Active alerts</h2>
+      <div class="alerts" id="alerts"><div class="empty">No active alerts</div></div>
+    </section>
+    <section>
+      <h2>Pipeline (ms)</h2>
+      <table id="timings"></table>
+    </section>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtTime = (ts) => ts ? new Date(ts * 1000).toLocaleTimeString() : "-";
+const history = {};
+
+function apiKey() {
+  try { return localStorage.getItem("segiApiKey") || ""; } catch { return ""; }
+}
+
+function spark(points) {
+  if (!points || points.length < 2) return "";
+  const xs = points.map(p => p.ts), ys = points.map(p => p.score ?? 0);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs) || x0 + 1;
+  const d = points.map((p, i) => `${i ? "L" : "M"}${((p.ts - x0) / (x1 - x0 || 1) * 100).toFixed(2)},${(34 - (p.score ?? 0) / 100 * 32 - 1).toFixed(2)}`).join(" ");
+  return `<svg class="spark" viewBox="0 0 100 34" preserveAspectRatio="none" aria-label="6 hour trend">
+    <line x1="0" x2="100" y1="${34 - 0.55 * 32 - 1}" y2="${34 - 0.55 * 32 - 1}" stroke="currentColor" stroke-opacity=".15" stroke-dasharray="2 2" vector-effect="non-scaling-stroke"/>
+    <path d="${d}" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+function renderZones(zones) {
+  if (!zones.length) return;
+  $("zones").innerHTML = zones.map(z => `
+    <div class="zone ${esc(z.grade)}">
+      <div class="top"><span class="name" title="${esc(z.name)}">${esc(z.name)}</span><span class="grade ${esc(z.grade)}">${esc(z.grade)}</span></div>
+      <div class="score">${z.score == null ? "--" : Math.round(z.score)}<span class="sub"> /100</span></div>
+      <div class="sub">${esc(z.produce)} &middot; ${z.n_items} ${z.n_items === 1 ? "item" : "items"} &middot; worst ${z.worst_item == null ? "-" : Math.round(z.worst_item)}${z.calibrated ? "" : " &middot; <i>not calibrated</i>"}${z.n_spoiled ? ` &middot; <b style="color:var(--d)">${z.n_spoiled} spoiled</b>` : ""}</div>
+      ${spark(history[z.zone_id])}
+    </div>`).join("");
+}
+
+function renderAlerts(alerts) {
+  if (!alerts.length) { $("alerts").innerHTML = '<div class="empty">No active alerts</div>'; return; }
+  alerts.sort((a, b) => b.raised_at - a.raised_at);
+  $("alerts").innerHTML = alerts.map(a => `
+    <div class="alert ${esc(a.severity)}">
+      <div><div>${esc(a.message)}</div><div class="t">${esc(a.severity)} &middot; since ${fmtTime(a.raised_at)}${a.acked ? " &middot; acknowledged" : ""}</div></div>
+      ${a.acked ? "" : `<button data-ack="${esc(a.id)}">Ack</button>`}
+    </div>`).join("");
+}
+
+$("alerts").addEventListener("click", async (e) => {
+  const id = e.target?.dataset?.ack;
+  if (!id) return;
+  await withKey(`/api/alerts/${encodeURIComponent(id)}/ack`, "POST");
+  refresh();
+});
+
+async function withKey(url, method) {
+  let res = await fetch(url, { method, headers: apiKey() ? { "X-API-Key": apiKey() } : {} });
+  if (res.status === 401) {
+    const key = prompt("API key required:");
+    if (!key) return res;
+    try { localStorage.setItem("segiApiKey", key); } catch {}
+    res = await fetch(url, { method, headers: { "X-API-Key": key } });
+  }
+  return res;
+}
+
+$("calib").addEventListener("click", async () => {
+  if (!confirm("Set the current view of ALL bins as the fresh baseline? Only do this right after restocking with fresh produce.")) return;
+  const res = await withKey("/api/calibrate", "POST");
+  if (!res.ok) alert(`Calibration failed: ${(await res.json().catch(() => ({}))).detail || res.status}`);
+  refresh();
+});
+
+async function refresh() {
+  try {
+    const s = await (await fetch("/api/status")).json();
+    if (s.store_name) { $("title").textContent = `${s.store_name} · Fresh Monitor`; document.title = $("title").textContent; }
+    renderZones(s.zones);
+    renderAlerts(s.alerts);
+    $("backend").textContent = `${s.backend.toUpperCase()} · ${s.mode}`;
+    const temps = Object.values(s.soc?.temperatures_c || {});
+    $("temp").textContent = temps.length ? `SoC ${Math.max(...temps).toFixed(0)}°C` : "";
+    $("updated").textContent = `updated ${fmtTime(Date.now() / 1000)}`;
+    $("timings").innerHTML = Object.entries(s.timings_ms).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v.toFixed(2)}</td></tr>`).join("");
+    if (s.snapshot_at) $("snap").src = `/api/snapshot.jpg?t=${s.snapshot_at}`;
+    const h = await (await fetch("/api/health")).json();
+    const up = h.camera?.connected;
+    $("camDot").className = "dot " + (up ? "ok" : "bad");
+    $("cam").textContent = up ? `camera ${h.camera.fps} fps` : "camera offline";
+  } catch (err) {
+    $("camDot").className = "dot bad";
+    $("cam").textContent = "device unreachable";
+  }
+}
+
+async function refreshHistory() {
+  try {
+    const zones = await (await fetch("/api/zones")).json();
+    await Promise.all(zones.map(async z => {
+      history[z.zone_id] = await (await fetch(`/api/zones/${encodeURIComponent(z.zone_id)}/history?hours=6`)).json();
+    }));
+  } catch {}
+}
+
+refresh(); refreshHistory();
+setInterval(refresh, 2000);
+setInterval(refreshHistory, 60000);
+</script>
+</body>
+</html>

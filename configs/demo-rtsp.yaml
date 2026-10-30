@@ -1,0 +1,11 @@
+# Demo of the real CCTV path: the sample clip is served as an RTSP stream by the
+# simulator (docker compose -f docker/cctv-simulator.yml up), and the monitor pulls
+# it exactly like a store IP camera / NVR channel.
+#   segi-freshness run -c configs/demo-rtsp.yaml
+extends: demo.yaml
+
+camera:
+  source: rtsp
+  uri: rtsp://127.0.0.1:8554/wetmarket-cam01
+  rtsp_codec: h264
+  rtsp_transport: tcp
