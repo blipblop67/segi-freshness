@@ -3,6 +3,20 @@
 Edge AI freshness monitoring for wet-market fruit and vegetables at Segi Cash & Carry,
 running on an **NVIDIA Jetson Orin Nano** with custom **CUDA** kernels and **TensorRT**.
 
+### Target platform
+
+| | |
+|---|---|
+| Device | **Jetson Orin Nano 8GB** developer kit (Ampere GPU, 1024 CUDA cores, SM 8.7) |
+| Software | **JetPack 6.2**: L4T r36.4.3, Ubuntu 22.04, Python 3.10, CUDA 12.6, TensorRT 10.3 |
+| Power mode | **MAXN SUPER** (new in JetPack 6.2; needs the dev kit's 19 V supply and its fan) |
+| Memory | 8 GB shared by the CPU and GPU, so the defaults stay small: FP16 engines, classifier batch ≤ 32, 2 Hz |
+| Camera | Store CCTV over RTSP (H.264/H.265, decoded by NVDEC) |
+
+Other JetPack versions need a matching Docker `BASE` image, and every TensorRT engine must be
+rebuilt on the device. `segi-freshness check` and `scripts/setup_jetson.sh` warn when the device
+is not an Orin Nano on L4T r36.4.x.
+
 The store CCTV camera looks down at the display bins. Every 0.5 s the device scores each bin
 (0–100, grade A–D), spots rotting, mouldy, bruised or yellowing produce, and alerts staff
 on the dashboard, over MQTT, or through a webhook *before* customers see bad stock.
@@ -99,9 +113,10 @@ echo 'SEGI_CAMERA_URI=rtsp://segi-viewer:PASSWORD@192.168.1.64:554/Streaming/Cha
 segi-freshness check -c configs/store.yaml   # verifies the stream and grabs a frame
 ```
 
-### 3. Jetson Orin Nano (native, recommended for production)
+### 3. Jetson Orin Nano 8GB (native, recommended for production)
 
-Requires JetPack 6.x (L4T r36, CUDA 12.6, TensorRT 10).
+Flash the Orin Nano 8GB with **JetPack 6.2** (SDK Manager, or the JetPack 6.2 SD-card image).
+The setup script checks the L4T version and switches to MAXN SUPER.
 
 ```bash
 git clone <repo> && cd segi-freshness
@@ -117,7 +132,8 @@ journalctl -u segi-freshness -f
 docker compose -f docker/docker-compose.yml up -d --build
 ```
 
-Set the `BASE` build-arg to match `/etc/nv_tegra_release` (default `l4t-jetpack:r36.4.0`).
+The default `BASE` is `l4t-jetpack:r36.4.0`, the NVIDIA image for the L4T 36.4 line. It is intended
+to run on JetPack 6.2 (r36.4.3). For another JetPack release, set `BASE` to the matching r36.x tag.
 
 ## Models
 
@@ -146,7 +162,7 @@ only worth it for multi-camera setups, and needs a calibration cache built from 
 | Acknowledge alert | Dashboard **Ack** (needs `SEGI_API_KEY`) |
 | Health / liveness | `GET /api/health` (returns 503 when the pipeline stalls) |
 | Metrics | `GET /metrics`: zone scores, stage latency, SoC temperature, GPU load, camera fps |
-| Max performance | `sudo nvpmodel -m <MAXN SUPER id> && sudo jetson_clocks` |
+| Max performance | `scripts/setup_jetson.sh` selects MAXN SUPER from `/etc/nvpmodel.conf`. Check with `nvpmodel -q`. Override with `NVP_MODE=<id>`. |
 | Hung pipeline | systemd `WatchdogSec=60` restarts it; after 20 consecutive errors the process exits so the supervisor restarts it |
 | Data retention | `storage.retention_days` (default 30), purged every 6 h |
 

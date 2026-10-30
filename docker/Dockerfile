@@ -1,7 +1,8 @@
-# Segi Fresh Monitor - Jetson Orin (JetPack 6.x / L4T r36) container.
+# Segi Fresh Monitor - container for the Jetson Orin Nano 8GB on JetPack 6.2 (L4T r36.4.3).
 # Build ON the Jetson (or with an arm64 builder):
 #   docker build -f docker/Dockerfile -t segi-freshness:1.0.0 .
-# Match BASE to the device's L4T release (cat /etc/nv_tegra_release).
+# r36.4.0 is NVIDIA's l4t-jetpack image for the L4T 36.4 line (JetPack 6.1/6.2).
+# For other releases, match BASE to /etc/nv_tegra_release.
 ARG BASE=nvcr.io/nvidia/l4t-jetpack:r36.4.0
 
 # ---------------------------------------------------------------- build stage

@@ -19,6 +19,30 @@ from .config import load_config
 
 log = logging.getLogger("segi_freshness")
 
+# Target device: Jetson Orin Nano 8GB, JetPack 6.2 (L4T r36.4.3, CUDA 12.6, TensorRT 10.3).
+TARGET_L4T = "36.4"
+
+
+def parse_l4t_release(text: str) -> str | None:
+    """'# R36 (release), REVISION: 4.3, ...' -> '36.4.3'."""
+    m = re.search(r"R(\d+) \(release\), REVISION: ([\d.]+)", text)
+    return f"{m.group(1)}.{m.group(2)}" if m else None
+
+
+def jetson_platform() -> tuple[str, str] | None:
+    """(board model, L4T version) on a Jetson, else None."""
+    try:
+        with open("/etc/nv_tegra_release", encoding="utf-8") as fh:
+            l4t = parse_l4t_release(fh.read()) or "unknown"
+    except OSError:
+        return None
+    try:
+        with open("/proc/device-tree/model", "rb") as fh:
+            model = fh.read().rstrip(b"\0").decode(errors="replace")
+    except OSError:
+        model = "unknown Jetson"
+    return model, l4t
+
 
 def cmd_run(args: argparse.Namespace) -> int:
     from .api import ApiServer
@@ -72,6 +96,12 @@ def cmd_check(args: argparse.Namespace) -> int:
     except Exception as exc:  # noqa: BLE001
         line("config", False, str(exc))
         return 1
+
+    platform = jetson_platform()
+    if platform is not None:
+        model, l4t = platform
+        line("device", "Orin Nano" in model, model, required=False)
+        line("JetPack", l4t.startswith(TARGET_L4T), f"L4T r{l4t} (target r36.4.3 = JetPack 6.2)", required=False)
 
     cuda_ok, detail = cuda_available()
     need_cuda = cfg.runtime.backend == "cuda" or cfg.runtime.mode == "detection"
